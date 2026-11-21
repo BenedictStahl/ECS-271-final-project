@@ -1,12 +1,10 @@
 import argparse
 import csv
-import os
 import shutil
 from pathlib import Path
 
 from tqdm import tqdm
 
-DATASET_REPO_ID = "Rajarshi-Roy-research/Defactify_Image_Dataset"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = REPO_ROOT / "data" / "datasets"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "raw"
@@ -17,14 +15,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dataset",
-        default=DATASET_REPO_ID,
-        help="Hugging Face dataset ID or local path",
-    )
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=DEFAULT_DATA_DIR,
-        help="Hugging Face cache directory",
+        default=str(DEFAULT_DATA_DIR),
+        help="Path to a saved dataset directory or Hugging Face dataset ID",
     )
     parser.add_argument(
         "--output-dir",
@@ -41,11 +33,6 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def resolve_datasets_cache(data_dir: Path) -> Path:
-    nested = data_dir / "datasets"
-    return nested if nested.is_dir() else data_dir
-
-
 def resolve_source(row) -> str:
     label_b = row.get("Label_B")
     if isinstance(label_b, int) and 0 <= label_b < len(SOURCE_NAMES):
@@ -60,11 +47,20 @@ def load_splits(dataset_name: str):
     from datasets import Dataset, load_dataset, load_from_disk
 
     dataset_path = Path(dataset_name)
-    if dataset_path.is_dir() and (
-        (dataset_path / "dataset_dict.json").exists()
-        or (dataset_path / "dataset_info.json").exists()
-    ):
-        dataset = load_from_disk(str(dataset_path))
+    if dataset_path.is_dir():
+        if (dataset_path / "dataset_dict.json").exists() or (
+            dataset_path / "dataset_info.json"
+        ).exists():
+            dataset = load_from_disk(str(dataset_path))
+        else:
+            split_dirs = {
+                child.name: load_from_disk(str(child))
+                for child in sorted(dataset_path.iterdir())
+                if child.is_dir() and (child / "dataset_info.json").exists()
+            }
+            if split_dirs:
+                return split_dirs
+            dataset = load_dataset(dataset_name)
     else:
         dataset = load_dataset(dataset_name)
 
@@ -84,8 +80,6 @@ def save_image(image_data, target_path: Path):
 
 def main():
     arguments = parse_arguments()
-    os.environ["HF_HOME"] = str(arguments.data_dir)
-    os.environ["HF_DATASETS_CACHE"] = str(resolve_datasets_cache(arguments.data_dir))
 
     from datasets import Image as HFImage
 
