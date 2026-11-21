@@ -23,7 +23,6 @@ def main():
     arguments = parse_arguments()
     os.environ["HF_HOME"] = str(arguments.data_dir)
 
-    from datasets import load_dataset
     enable_progress_bars()
     enable_progress_bar()
 
