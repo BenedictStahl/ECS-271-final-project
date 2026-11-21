@@ -1,6 +1,8 @@
 import argparse
+import os
 from pathlib import Path
 from datasets import enable_progress_bar, load_dataset
+from huggingface_hub import snapshot_download
 from huggingface_hub.utils import enable_progress_bars
 
 DATASET_REPO_ID = "Rajarshi-Roy-research/Defactify_Image_Dataset"
@@ -12,7 +14,6 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--data-dir",
-        type=Path,
         default=DEFAULT_DATA_DIR,
     )
     return parser.parse_args()
@@ -20,19 +21,17 @@ def parse_arguments():
 
 def main():
     arguments = parse_arguments()
-    output_dir = arguments.data_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["HF_HOME"] = str(arguments.data_dir)
 
+    from datasets import load_dataset
     enable_progress_bars()
     enable_progress_bar()
 
-    print(f"Downloading {DATASET_REPO_ID}...")
+    print(f"Downloading {DATASET_REPO_ID} to {arguments.data_dir}...")
+    snapshot_download(repo_id=DATASET_REPO_ID, repo_type="dataset")
+
     dataset = load_dataset(DATASET_REPO_ID)
     print(dataset)
-
-    print(f"Saving dataset to {output_dir}...")
-    dataset.save_to_disk(str(output_dir))
-    print("Done.")
 
 
 if __name__ == "__main__":
