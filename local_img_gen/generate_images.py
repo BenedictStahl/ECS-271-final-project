@@ -7,6 +7,14 @@ from pathlib import Path
 import torch
 from diffusers import DiffusionPipeline
 
+DEFAULT_PROMPT_TEMPLATE = "{caption} Candid everyday snapshot, natural lighting, slightly imperfect."
+DEFAULT_NEGATIVE_PROMPT = (
+    "camera, camera screen, viewfinder, photo of a photo, picture frame, border, "
+    "CGI, 3D render, illustration, painting, cartoon, oversaturated, HDR, airbrushed, plastic skin, "
+    "studio lighting, overly sharp, professional photography, bokeh, cinematic, masterpiece"
+)
+DEFAULT_MODEL_SETTINGS = json.dumps({"true_cfg_scale": 2.75, "negative_prompt": DEFAULT_NEGATIVE_PROMPT})
+
 
 def read_arguments():
     parser = argparse.ArgumentParser(description="Generate one image per MS COCO caption with a text-to-image model.")
@@ -14,17 +22,17 @@ def read_arguments():
     parser.add_argument("--output-dir", required=True, help="Folder for the images and metadata.jsonl")
     parser.add_argument("--model-id", default="Qwen/Qwen-Image-2512", help="Any diffusers text-to-image model")
     parser.add_argument("--generator-name", help="Name stored with every image (default: last part of --model-id)")
-    parser.add_argument("--prompt-template", default="{caption}", help='e.g. "A photorealistic photograph of: {caption}"')
+    parser.add_argument("--prompt-template", default=DEFAULT_PROMPT_TEMPLATE, help="Text around each caption, must contain {caption}")
     parser.add_argument(
         "--model-settings",
-        default='{"true_cfg_scale": 4.0, "negative_prompt": " "}',
-        help="Extra model settings as JSON. The default is the recommended setting for Qwen-Image.",
+        default=DEFAULT_MODEL_SETTINGS,
+        help="Extra model settings as JSON. The default (guidance 2.75 and a negative prompt) is tuned for Qwen-Image.",
     )
     parser.add_argument("--count", type=int, help="How many COCO images to use (default: all)")
     parser.add_argument("--order", choices=["forward", "reverse"], default="forward")
     parser.add_argument("--limit", type=int, help="Stop after this many new images")
-    parser.add_argument("--width", type=int, default=1104)
-    parser.add_argument("--height", type=int, default=832)
+    parser.add_argument("--width", type=int, default=832, help="Must be divisible by 16")
+    parser.add_argument("--height", type=int, default=624, help="Must be divisible by 16")
     parser.add_argument("--steps", type=int, default=50)
     parser.add_argument("--jpeg-quality", type=int, default=95)
     parser.add_argument("--seed", type=int, default=271)
