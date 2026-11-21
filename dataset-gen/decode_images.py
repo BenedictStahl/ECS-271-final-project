@@ -1,10 +1,12 @@
 import argparse
 import csv
+import os
 import shutil
 from pathlib import Path
 
 from tqdm import tqdm
 
+DATASET_REPO_ID = "Rajarshi-Roy-research/Defactify_Image_Dataset"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DATA_DIR = REPO_ROOT / "data" / "datasets"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "raw"
@@ -15,8 +17,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--dataset",
-        default=str(DEFAULT_DATA_DIR),
-        help="Path to a saved dataset directory or Hugging Face dataset ID",
+        default=None,
+        help="Path to a saved/cached dataset directory or Hugging Face dataset ID (defaults to local data/datasets or HF cache)",
     )
     parser.add_argument(
         "--output-dir",
@@ -33,6 +35,20 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def has_hf_cache(directory: Path) -> bool:
+    return (
+        (directory / "datasets").is_dir()
+        or (directory / "hub").is_dir()
+        or any(p.is_dir() and "___" in p.name for p in directory.iterdir())
+    )
+
+
+def configure_hf_cache(cache_root: Path):
+    os.environ["HF_HOME"] = str(cache_root)
+    nested = cache_root / "datasets"
+    os.environ["HF_DATASETS_CACHE"] = str(nested if nested.is_dir() else cache_root)
+
+
 def resolve_source(row) -> str:
     label_b = row.get("Label_B")
     if isinstance(label_b, int) and 0 <= label_b < len(SOURCE_NAMES):
@@ -43,27 +59,47 @@ def resolve_source(row) -> str:
     return str(label_a) if label_a is not None else "unknown"
 
 
-def load_splits(dataset_name: str):
-    from datasets import Dataset, load_dataset, load_from_disk
+def load_splits(dataset_arg: str | None):
+    dataset_path = Path(dataset_arg) if dataset_arg else DEFAULT_DATA_DIR
 
-    dataset_path = Path(dataset_name)
     if dataset_path.is_dir():
         if (dataset_path / "dataset_dict.json").exists() or (
             dataset_path / "dataset_info.json"
         ).exists():
-            dataset = load_from_disk(str(dataset_path))
-        else:
-            split_dirs = {
-                child.name: load_from_disk(str(child))
-                for child in sorted(dataset_path.iterdir())
-                if child.is_dir() and (child / "dataset_info.json").exists()
-            }
-            if split_dirs:
-                return split_dirs
-            dataset = load_dataset(dataset_name)
-    else:
-        dataset = load_dataset(dataset_name)
+            from datasets import Dataset, load_from_disk
 
+            dataset = load_from_disk(str(dataset_path))
+            return {"train": dataset} if isinstance(dataset, Dataset) else dataset
+
+        split_dirs = [
+            child
+            for child in sorted(dataset_path.iterdir())
+            if child.is_dir() and (child / "dataset_info.json").exists()
+        ]
+        if split_dirs:
+            from datasets import load_from_disk
+
+            return {child.name: load_from_disk(str(child)) for child in split_dirs}
+
+        if has_hf_cache(dataset_path):
+            configure_hf_cache(dataset_path)
+            from datasets import Dataset, load_dataset
+
+            dataset = load_dataset(DATASET_REPO_ID)
+            return {"train": dataset} if isinstance(dataset, Dataset) else dataset
+
+        if dataset_arg is None:
+            from datasets import Dataset, load_dataset
+
+            dataset = load_dataset(DATASET_REPO_ID)
+            return {"train": dataset} if isinstance(dataset, Dataset) else dataset
+
+    elif DEFAULT_DATA_DIR.is_dir() and has_hf_cache(DEFAULT_DATA_DIR):
+        configure_hf_cache(DEFAULT_DATA_DIR)
+
+    from datasets import Dataset, load_dataset
+
+    dataset = load_dataset(dataset_arg or DATASET_REPO_ID)
     return {"train": dataset} if isinstance(dataset, Dataset) else dataset
 
 
@@ -80,10 +116,10 @@ def save_image(image_data, target_path: Path):
 
 def main():
     arguments = parse_arguments()
+    splits = load_splits(arguments.dataset)
 
     from datasets import Image as HFImage
 
-    splits = load_splits(arguments.dataset)
     arguments.output_dir.mkdir(parents=True, exist_ok=True)
     metadata_path = arguments.output_dir / "metadata.csv"
 
@@ -98,7 +134,14 @@ def main():
         writer.writeheader()
 
         for split_name, split in splits.items():
-            image_col = "Image" if "Image" in split.column_names else "image"
+            if "Image" in split.column_names:
+                image_col = "Image"
+            elif "image" in split.column_names:
+                image_col = "image"
+            else:
+                raise ValueError(
+                    f"Split '{split_name}' has no image column (found: {split.column_names})"
+                )
             raw_split = split.cast_column(image_col, HFImage(decode=False))
             if arguments.limit is not None:
                 raw_split = raw_split.select(range(min(arguments.limit, len(raw_split))))
