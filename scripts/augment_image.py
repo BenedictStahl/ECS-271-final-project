@@ -1,5 +1,5 @@
 import hashlib
-import json
+import io
 import random
 
 from PIL import Image, ImageEnhance, ImageFilter
@@ -9,13 +9,17 @@ SETTINGS = {
     "scale_factor_min": 0.8,
     "scale_factor_max": 1.2,
 
-    "contrast_probability": 0.3,
+    "contrast_probability": 0.5,
     "contrast_min": 0.8,
     "contrast_max": 1.2,
 
-    "blur_probability": 0.3,
+    "blur_probability": 0.5,
     "blur_radius_min": 0.1,
     "blur_radius_max": 2.0,
+
+    "jpeg_probability": 0.5,
+    "jpeg_quality_min": 70,
+    "jpeg_quality_max": 95,
 }
 
 
@@ -45,6 +49,12 @@ def choose_augmentations(seed):
             blur_dice, SETTINGS["blur_radius_min"], SETTINGS["blur_radius_max"]
         )
 
+    jpeg_dice = make_dice(seed, "jpeg")
+    if happens(jpeg_dice, SETTINGS["jpeg_probability"]):
+        choices["jpeg_quality"] = random_whole_number(
+            jpeg_dice, SETTINGS["jpeg_quality_min"], SETTINGS["jpeg_quality_max"]
+        )
+
     return choices
 
 
@@ -60,6 +70,9 @@ def apply_augmentations(image, choices):
     if "blur_radius" in choices:
         image = image.filter(ImageFilter.GaussianBlur(choices["blur_radius"]))
 
+    if "jpeg_quality" in choices:
+        image = compress_as_jpeg(image, choices["jpeg_quality"])
+
     return image
 
 
@@ -67,6 +80,13 @@ def scale(image, factor):
     new_width = round(image.width * factor)
     new_height = round(image.height * factor)
     return image.resize((new_width, new_height), Image.Resampling.BILINEAR)
+
+
+def compress_as_jpeg(image, quality):
+    file_in_memory = io.BytesIO()
+    image.save(file_in_memory, format="JPEG", quality=quality)
+    file_in_memory.seek(0)
+    return Image.open(file_in_memory).convert("RGB")
 
 
 def make_dice(seed, step_name):
@@ -79,6 +99,11 @@ def happens(dice, probability):
 
 def random_number(dice, lowest, highest):
     return lowest + (highest - lowest) * dice.random()
+
+
+def random_whole_number(dice, lowest, highest):
+    number_of_options = highest - lowest + 1
+    return lowest + int(number_of_options * dice.random())
 
 
 def view_seed(image_name, view_number):
@@ -94,11 +119,8 @@ def describe_choices(choices):
         parts.append(f"contrast {choices['contrast']:.2f}")
     if "blur_radius" in choices:
         parts.append(f"blur {choices['blur_radius']:.2f}")
+    if "jpeg_quality" in choices:
+        parts.append(f"jpeg q{choices['jpeg_quality']}")
     if not parts:
         return "unchanged"
     return ", ".join(parts)
-
-
-def settings_fingerprint():
-    settings_as_text = json.dumps(SETTINGS, sort_keys=True)
-    return hashlib.sha256(settings_as_text.encode()).hexdigest()[:12]
