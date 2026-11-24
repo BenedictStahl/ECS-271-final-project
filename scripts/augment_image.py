@@ -5,22 +5,24 @@ import random
 from PIL import Image, ImageEnhance, ImageFilter
 
 SETTINGS = {
-    "scale_probability": 0.5,
+    "scale_probability": 0.33,
     "scale_factor_min": 0.8,
     "scale_factor_max": 1.2,
 
-    "contrast_probability": 0.5,
+    "contrast_probability": 0.33,
     "contrast_min": 0.8,
     "contrast_max": 1.2,
 
-    "blur_probability": 0.5,
+    "blur_probability": 0.33,
     "blur_radius_min": 0.1,
     "blur_radius_max": 2.0,
 
-    "jpeg_probability": 0.5,
-    "jpeg_quality_min": 70,
+    "jpeg_probability": 0.33,
+    "jpeg_quality_min": 60,
     "jpeg_quality_max": 95,
 }
+
+STEPS = ["scale", "contrast", "blur", "jpeg"]
 
 
 def augment_image(image, seed):
@@ -29,33 +31,43 @@ def augment_image(image, seed):
 
 
 def choose_augmentations(seed):
+    chosen_steps = choose_steps(seed)
     choices = {}
 
-    scale_dice = make_dice(seed, "scale")
-    if happens(scale_dice, SETTINGS["scale_probability"]):
+    if "scale" in chosen_steps:
         choices["scale_factor"] = random_number(
-            scale_dice, SETTINGS["scale_factor_min"], SETTINGS["scale_factor_max"]
+            make_dice(seed, "scale_factor"), SETTINGS["scale_factor_min"], SETTINGS["scale_factor_max"]
         )
 
-    contrast_dice = make_dice(seed, "contrast")
-    if happens(contrast_dice, SETTINGS["contrast_probability"]):
+    if "contrast" in chosen_steps:
         choices["contrast"] = random_number(
-            contrast_dice, SETTINGS["contrast_min"], SETTINGS["contrast_max"]
+            make_dice(seed, "contrast_factor"), SETTINGS["contrast_min"], SETTINGS["contrast_max"]
         )
 
-    blur_dice = make_dice(seed, "blur")
-    if happens(blur_dice, SETTINGS["blur_probability"]):
+    if "blur" in chosen_steps:
         choices["blur_radius"] = random_number(
-            blur_dice, SETTINGS["blur_radius_min"], SETTINGS["blur_radius_max"]
+            make_dice(seed, "blur_radius"), SETTINGS["blur_radius_min"], SETTINGS["blur_radius_max"]
         )
 
-    jpeg_dice = make_dice(seed, "jpeg")
-    if happens(jpeg_dice, SETTINGS["jpeg_probability"]):
+    if "jpeg" in chosen_steps:
         choices["jpeg_quality"] = random_whole_number(
-            jpeg_dice, SETTINGS["jpeg_quality_min"], SETTINGS["jpeg_quality_max"]
+            make_dice(seed, "jpeg_quality"), SETTINGS["jpeg_quality_min"], SETTINGS["jpeg_quality_max"]
         )
 
     return choices
+
+
+def choose_steps(seed):
+    chosen_steps = []
+    for step in STEPS:
+        if happens(make_dice(seed, step), SETTINGS[f"{step}_probability"]):
+            chosen_steps.append(step)
+
+    if not chosen_steps:
+        fallback_step = random_pick(make_dice(seed, "fallback"), STEPS)
+        chosen_steps.append(fallback_step)
+
+    return chosen_steps
 
 
 def apply_augmentations(image, choices):
@@ -106,6 +118,10 @@ def random_whole_number(dice, lowest, highest):
     return lowest + int(number_of_options * dice.random())
 
 
+def random_pick(dice, options):
+    return options[int(len(options) * dice.random())]
+
+
 def view_seed(image_name, view_number):
     text = f"{image_name}:{view_number}"
     return int(hashlib.sha256(text.encode()).hexdigest()[:12], 16)
@@ -121,6 +137,4 @@ def describe_choices(choices):
         parts.append(f"blur {choices['blur_radius']:.2f}")
     if "jpeg_quality" in choices:
         parts.append(f"jpeg q{choices['jpeg_quality']}")
-    if not parts:
-        return "unchanged"
     return ", ".join(parts)
