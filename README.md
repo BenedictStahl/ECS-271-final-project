@@ -1,107 +1,81 @@
-# ECS-271-final-project
-Final project for ECS 271, FQ 2026.
+# ECS 271: pretrained encoders for AI-image detection
 
-## Cameron's data exploration branch
+Compare DeiT III Base/16, DINOv3 Base/16, and SigLIP 2 Base/16 using the group's
+96,000-image replacement dataset. Each encoder uses mean patch pooling and its
+own 768-to-1 linear head. **Qwen-Image-2.1-Turbo is the primary held-out generator.**
 
-Branch: `cam-data-exploration` (created from `main`). This workflow downloads and
-profiles Defactify/MS COCOAI for pretrained-model input compatibility. It does
-not train a detector or download model weights.
+## Current state â€” 25 November 2026
 
-### Run on another Windows computer
+- Complete replacement dataset inspected and indexed; splits and visual review applied.
+- All three encoders have 96,000 original feature vectors and 42,000 augmented training-view vectors.
+- Three frozen heads trained and verified. Encoder weights remain unchanged.
+- **Primary full-dataset test evaluation is deferred.** Earlier pilots/debug checks evaluated their own test subsets. Fine-tuning configuration is pending Josh's proposal; no fine-tuning trainer is implemented.
+- Local DINO weights are verified and usable without a Hub login.
 
-Install Git and 64-bit Python 3.12. Open PowerShell and use a reasonably short
-checkout path, for example `C:\src`. No CUDA installation is needed for this audit.
-Allow about 10 GB for raw data and the environment; additional space is needed
-if you also build Hugging Face Arrow caches or run the original notebook.
+| Encoder | Seen-generator validation balanced accuracy | Validation AUROC |
+|---|---:|---:|
+| DeiT III | 90.75% | 0.9640 |
+| SigLIP 2 | 96.98% | 0.9953 |
+| DINOv3 | 97.05% | 0.9959 |
+
+These are validation results on 7,500 images from real + four seen generators.
+They do not measure Qwen generalization or establish a statistically significant ranking.
+
+## Windows setup
+
+Use 64-bit Python 3.12 and a reasonably short checkout path.
 
 ```powershell
-git clone --branch cam-data-exploration https://github.com/BenedictStahl/ECS-271-final-project.git
+git clone --branch cam-training-pipeline https://github.com/BenedictStahl/ECS-271-final-project.git
 cd ECS-271-final-project
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-data.txt
-.\.venv\Scripts\python.exe scripts\download_dataset.py
-.\.venv\Scripts\python.exe scripts\profile_dataset.py
-```
-
-For an existing clone, fetch and switch to the branch instead of cloning again:
-
-```powershell
-git fetch origin
-git switch cam-data-exploration
-```
-
-Calling the venv's Python directly avoids PowerShell activation-policy issues.
-`requirements-data.txt` pins the three direct dependencies used by these scripts;
-it is not a complete lockfile for every transitive dependency. The existing
-`requirements.txt` is for the broader notebook environment.
-
-### Files and outputs
-
-- `scripts/download_dataset.py`: downloads the dataset card and Parquet shards
-  into `data/raw`, using immutable dataset revision
-  `1c3b714c9691eb6dd11c2c1e92eab1ac29584fa0` by default. Writes a download manifest.
-- `scripts/profile_dataset.py`: reads local Parquet batches directly with
-  PyArrow, without network access or another full Arrow cache. Writes
-  `data/dataset_compatibility_profile.json`.
-- `scripts/dataset_io.py`: repository-relative defaults and shard completeness
-  validation shared by the scripts.
-- `scripts/dataset_overview.ipynb`: original team notebook, preserved unchanged.
-- `tests/test_dataset_workflow.py`: small local-fixture regression tests; no
-  dataset download required.
-
-The data, generated reports, caches and `.venv` are Git-ignored. The original
-one-off `data/profile_dataset.py` is superseded by the tracked script in
-`scripts/`; it is not needed on the new machine. Research documents are supplied
-separately in the handoff ZIP, not in this branch.
-
-Both scripts resolve default paths relative to the repository, regardless of
-the current working directory. Explicit relative option paths are relative to
-your shell's current directory:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\download_dataset.py --data-dir D:\datasets\defactify
-.\.venv\Scripts\python.exe scripts\profile_dataset.py --data-dir D:\datasets\defactify --output data\my_profile.json
-```
-
-The profiler accepts either a download root containing `data/*.parquet` or the
-shard directory itself. An older Hugging Face snapshot can be inspected by
-passing its snapshot directory using `--data-dir`.
-
-### What the audit establishes
-
-It inspects every row's dimensions, aspect ratios, image format/mode, label pairs,
-and source/split counts. By default it also fully decodes, converts to RGB, and
-resizes the first five successful images per source per split (90 total for
-this dataset). The JSON includes all size counts, schema, versions, errors,
-runtime, and download provenance when a manifest is available.
-
-This is not a full corruption scan, duplicate/leakage audit, or model inference
-benchmark. Header readability does not prove every image fully decodes. The
-profiler exits nonzero for image/label errors and retains the report for review.
-
-Previously verified: 96,000 RGB JPEG rows, splits 42K/9K/45K; SD2.1 at 768 square,
-SDXL/SD3 at 1024 square, DALL-E 3 mostly 270 square, Midjourney mostly 436 square,
-and variable-sized real photos. Binary labels are imbalanced 5:1 fake:real.
-
-### Troubleshooting and checks
-
-- Internet access to Hugging Face is required for downloading. The dataset is
-  public; an account token is generally unnecessary. Interrupted downloads can
-  be resumed by rerunning the same command.
-- The old downloader called `datasets.load_dataset(repo_id)` and failed on long
-  Windows Arrow-cache filenames. This version downloads raw Parquet directly and
-  the profiler creates no additional Arrow copy. A short checkout/data path is
-  still advisable because Hub metadata has nested paths.
-- `--revision main` intentionally fetches newer data. Omit it to reproduce the
-  audited revision. The manifest records the resolved commit. Use a new data
-  destination when switching revisions so leftover shards cannot be mixed.
-- `--local-files-only` requests a download using only local files/cache. The
-  profiler is always local-only and reports missing/incomplete shard sets.
-- The original notebook has separate cache and working-directory assumptions;
-  it will not automatically discover `data/raw`. These two Python scripts are
-  the portable compatibility workflow.
-
-```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-training.txt
 .\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe scripts\check_training_env.py
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
+
+The pinned Windows wheels include the CUDA runtime; an NVIDIA driver is required,
+but a separate CUDA toolkit is not. Frozen-head fitting uses the CPU. Feature
+extraction and later fine-tuning use the GPUs. Calling the venv's Python directly
+avoids PowerShell activation-policy issues. The requirements pin direct dependencies,
+not every transitive package. `requirements.txt` is the older notebook environment.
+
+Cloning this branch supplies code and documentation. Replacement images, review/index inputs,
+model weights, features, and trained checkpoints are transferred separately and
+remain Git-ignored. Research documents and their handoff ZIP remain outside this repo.
+
+## Documentation
+
+- [Current results, pending work, and team handoff](docs/STATUS.md)
+- [Training protocol, exact checkpoints, augmentation, and commands](docs/TRAINING.md)
+- [Local artifact locations, transfer inputs, and cleanup record](docs/DATA_LAYOUT.md)
+- [Original Defactify download/profile workflow](docs/DEFACTIFY.md)
+- [Primary experiment selection](training_protocol.json)
+- [Generator provenance and unresolved assumptions](scripts/generation_provenance.json)
+- [Historical working notes](docs/history/WORKING_NOTES_THROUGH_2026-11-25.md) â€” superseded snapshots, not current instructions
+
+## Main entry points
+
+| Script | Purpose |
+|---|---|
+| `replacement_dataset.py` | Index multiple image roots against supplied metadata and the reference map |
+| `build_holdout_manifests.py` | Apply hash-bound visual decisions; construct shared holdout manifests |
+| `train_probe.py` | Check pretrained encoders; extract original/missing or augmented features |
+| `fit_probe.py` | Fit a frozen linear head; export its affine coefficients and predictions |
+| `training_augmentation.py` | Bind Ben's augmentation to deterministic training-only views |
+| `smoke_training.py` | Tiny all-encoder/all-holdout pipeline check, separate from scientific runs |
+| `check_training_env.py` | Dependency/GPU checks; optional random-weight architecture checks |
+| `download_dataset.py`, `profile_dataset.py` | Original Defactify compatibility audit |
+
+Scripts live in `scripts/`. Inventory, manifest, feature-cache, smoke-run and
+head-fit output directories must be new; these entry points refuse existing
+destinations. The original downloader supports reruns and the profiler can replace
+its report. Extraction is not resumable mid-cache. No new training is
+needed to resume Ben's XAI work with the saved frozen heads.
+
+Accuracy audit completed 25 November 2026 against current code, filesystem,
+metadata, manifest/review bindings, encoder/cache provenance, and saved validation
+outputs. All 96,000 current image hashes match the indexed full-decode evidence.
+The local audit report is `data/maintenance/2026-11-25/documentation_layout_audit.json`.
+No primary test predictions were computed during this check.

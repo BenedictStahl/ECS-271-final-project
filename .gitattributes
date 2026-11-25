@@ -1,0 +1,2 @@
+# Keep Python source hashes (including augmentation recipe identity) portable.
+*.py text eol=lf
