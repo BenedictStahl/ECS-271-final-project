@@ -1,0 +1,43 @@
+{
+  "decision_date": "2026-11-25",
+  "primary_held_out_generator": "qwen_image_2_1",
+  "display_name": "Qwen-Image-2.1-Turbo",
+  "decision_basis": "Explicit user selection after generator/protocol analysis; not selected from full baseline test performance. Tiny pipeline smoke tests previously included all generators.",
+  "applies_to": [
+    "frozen linear-head baseline",
+    "subsequent encoder fine-tuning"
+  ],
+  "encoders": [
+    "deit3",
+    "siglip2",
+    "dinov3"
+  ],
+  "training_generators": [
+    "flux3",
+    "z_image_turbo",
+    "sdxl_turbo",
+    "mage_flow"
+  ],
+  "manifest": "data/replacement-holdouts-2026-11-25/holdout-qwen_image_2_1.json",
+  "manifest_sha256": "7c5872f87928667f061372dab488e2d4b0097ff7a349e52ac9dd7ad5ab18725d",
+  "index_sha256": "cb0055145d1ffe604f9c31a8eff78de34f0192282082abd7eee0abec88d1fec3",
+  "split_counts": {
+    "train": 35000,
+    "validation": 7500,
+    "test": 45000
+  },
+  "test_cohort_counts": {
+    "real": 7500,
+    "held_out_fake": 7500,
+    "seen_fake": 30000
+  },
+  "augmentation": "One deterministic extra view per selected training image; Qwen originals and augmented views excluded from training and validation. Cached Qwen vectors do not constitute training.",
+  "frozen_head": {
+    "architecture": "mean_patch_v1 -> linear binary head",
+    "C": 1.0,
+    "class_weight": "balanced",
+    "probability_threshold": 0.5
+  },
+  "fine_tuning_configuration": "Pending teammate proposal",
+  "other_candidate_manifests": "Available for explicitly separate secondary experiments; primary holdout remains Qwen."
+}

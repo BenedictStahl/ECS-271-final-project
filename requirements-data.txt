@@ -1,0 +1,4 @@
+# Versions used for the Windows data exploration workflow (Python 3.12).
+huggingface-hub==2.4.0
+pyarrow==26.0.1
+pillow==13.0.0

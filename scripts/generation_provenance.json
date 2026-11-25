@@ -1,0 +1,66 @@
+{
+  "generation_code_commit": "f50af0fa652252e1ce3649601751f8d7bf27b58c",
+  "generation_code_path": "dataset-gen/generate_images.py",
+  "settings_status": "Committed defaults assumed; not a recovered per-image run log",
+  "only_matched": false,
+  "only_matched_status": "Confirmed by generator operator on 2026-11-22",
+  "caption_model": "qwen3-vl:4b-instruct",
+  "caption_model_status": "Committed default assumed",
+  "process": "Real image -> vision-model description -> text-only image generation; preserve original split/index",
+  "seed_rule": "42 + index (index is local to the original dataset split)",
+  "seed_status": "Operator reported default rule; per-image overrides not logged",
+  "jpeg_quality": 92,
+  "cfg": 1.0,
+  "denoise": 1.0,
+  "models": {
+    "flux3": {
+      "repo": "black-forest-labs/flux-3-image-klein-comfy",
+      "checkpoint": "flux3-image-klein-int8-convrot.safetensors",
+      "size": 768,
+      "steps": 4,
+      "sampler": "euler",
+      "scheduler": "simple"
+    },
+    "z_image_turbo": {
+      "repo": "Comfy-Org/Z-Image-Turbo",
+      "checkpoint": "z_image_turbo_int8_convrot.safetensors",
+      "size": 768,
+      "steps": 8,
+      "sampler": "res_multistep",
+      "scheduler": "simple"
+    },
+    "sdxl_turbo": {
+      "repo": "stabilityai/sdxl-turbo",
+      "checkpoint": "sd_xl_turbo_1.0_fp16.safetensors",
+      "size": 512,
+      "steps": 4,
+      "sampler": "euler_ancestral",
+      "scheduler": "normal"
+    },
+    "qwen_image_2_1": {
+      "repo": "Comfy-Org/Qwen-Image-2.1",
+      "checkpoint": "qwen_image_2.1_turbo_int8_convrot.safetensors",
+      "size": 768,
+      "steps": 8,
+      "sampler": "euler",
+      "scheduler": "simple"
+    },
+    "mage_flow": {
+      "repo": null,
+      "checkpoint": null,
+      "settings_status": "Unresolved: complete delivery replaces MiniMax; current committed generation code has no mage_flow workflow. Global assumed settings must not be attributed to this source.",
+      "observed_size": 768
+    }
+  },
+  "previously_planned_models": {
+    "minimax_h3": {
+      "repo": "Comfy-Org/MiniMax-H3-Image",
+      "checkpoint": "minimax_h3_image_pruned_w4a8.safetensors",
+      "size": 1024,
+      "steps": 6,
+      "sampler": "euler",
+      "scheduler": "simple"
+    }
+  },
+  "settings_scope": "Committed defaults apply only to the four matching workflows; mage_flow settings and seed are unknown."
+}
