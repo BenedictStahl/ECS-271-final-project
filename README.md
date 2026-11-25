@@ -39,7 +39,9 @@ The pinned Windows wheels include the CUDA runtime; an NVIDIA driver is required
 but a separate CUDA toolkit is not. Frozen-head fitting uses the CPU. Feature
 extraction and later fine-tuning use the GPUs. Calling the venv's Python directly
 avoids PowerShell activation-policy issues. The requirements pin direct dependencies,
-not every transitive package. `requirements.txt` is the older notebook environment.
+not every transitive package. `requirements.txt` is the upstream notebook/data-generation dependency list;
+use requirements-training.txt for this Windows training pipeline. Do not combine
+the two pin sets in the same environment.
 
 Cloning this branch supplies code and documentation. Replacement images, review/index inputs,
 model weights, features, and trained checkpoints are transferred separately and
@@ -79,3 +81,16 @@ metadata, manifest/review bindings, encoder/cache provenance, and saved validati
 outputs. All 96,000 current image hashes match the indexed full-decode evidence.
 The local audit report is `data/maintenance/2026-11-25/documentation_layout_audit.json`.
 No primary test predictions were computed during this check.
+
+## Team image-generation tools
+
+The upstream `dataset-gen/` ComfyUI generation/description/metadata tools and
+`local_img_gen/` caption-based generation workflow are retained. See
+[local generation setup](local_img_gen/README.md) for that separate environment.
+The committed dataset-gen workflow still lists MiniMax; delivered mage_flow
+provenance remains unresolved. These tools are not required to fit the frozen heads.
+
+The downloader conflict with main was resolved in favor of direct, revision-pinned
+Parquet download, preserving the portable audit and avoiding full Arrow cache creation.
+Python files use LF checkouts via .gitattributes so augmentation source hashes and
+recipe identities stay portable across operating systems.
