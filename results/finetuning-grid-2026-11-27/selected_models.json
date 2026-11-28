@@ -1,0 +1,137 @@
+{
+  "deit3": {
+    "checkpoint": "deit3-finetuned.pt",
+    "frozen_head": "deit3-frozen-head.npz",
+    "selection": {
+      "configuration": "C",
+      "recipe": {
+        "name": "grid_C_last4_lr1e-05",
+        "unfrozen_blocks": 4,
+        "encoder_lr": 1e-05,
+        "head_lr": 0.0001,
+        "weight_decay": 0.01,
+        "batch_size": 32,
+        "epochs": 5,
+        "patience": 2,
+        "warmup_fraction": 0.05,
+        "gradient_clip": 1.0,
+        "seed": 42,
+        "augmentation_views": 1,
+        "selection_metric": "seen_validation_auroc",
+        "threshold": 0.5
+      },
+      "epoch": 5,
+      "validation": {
+        "n": 7500,
+        "balanced_accuracy": 0.973,
+        "auroc": 0.9984782222222223,
+        "real_false_positive_rate": 0.048,
+        "confusion_matrix_real_fake": [
+          [
+            1428,
+            72
+          ],
+          [
+            36,
+            5964
+          ]
+        ]
+      },
+      "original_checkpoint_sha256": "bacbc496ca2f3beffbbad807b3f2cdd4b9bf0dbeda690d74494082a90ae01829"
+    },
+    "base_checkpoint": [
+      "timm/deit3_base_patch16_224.fb_in22k_ft_in1k",
+      "b5791d4983082b0c680da556954beb5b1962e85f"
+    ]
+  },
+  "siglip2": {
+    "checkpoint": "siglip2-finetuned.pt",
+    "frozen_head": "siglip2-frozen-head.npz",
+    "selection": {
+      "configuration": "C",
+      "recipe": {
+        "name": "grid_C_last4_lr1e-05",
+        "unfrozen_blocks": 4,
+        "encoder_lr": 1e-05,
+        "head_lr": 0.0001,
+        "weight_decay": 0.01,
+        "batch_size": 32,
+        "epochs": 5,
+        "patience": 2,
+        "warmup_fraction": 0.05,
+        "gradient_clip": 1.0,
+        "seed": 42,
+        "augmentation_views": 1,
+        "selection_metric": "seen_validation_auroc",
+        "threshold": 0.5
+      },
+      "epoch": 3,
+      "validation": {
+        "n": 7500,
+        "balanced_accuracy": 0.9985833333333334,
+        "auroc": 0.9999941111111111,
+        "real_false_positive_rate": 0.002,
+        "confusion_matrix_real_fake": [
+          [
+            1497,
+            3
+          ],
+          [
+            5,
+            5995
+          ]
+        ]
+      },
+      "original_checkpoint_sha256": "c66e1756ac65c4f7dde2435fffefdbc192383bbbc5d756fc48c82407efffeb0b"
+    },
+    "base_checkpoint": [
+      "google/siglip2-base-patch16-224",
+      "75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2"
+    ]
+  },
+  "dinov3": {
+    "checkpoint": "dinov3-finetuned.pt",
+    "frozen_head": "dinov3-frozen-head.npz",
+    "selection": {
+      "configuration": "C",
+      "recipe": {
+        "name": "grid_C_last4_lr1e-05",
+        "unfrozen_blocks": 4,
+        "encoder_lr": 1e-05,
+        "head_lr": 0.0001,
+        "weight_decay": 0.01,
+        "batch_size": 32,
+        "epochs": 5,
+        "patience": 2,
+        "warmup_fraction": 0.05,
+        "gradient_clip": 1.0,
+        "seed": 42,
+        "augmentation_views": 1,
+        "selection_metric": "seen_validation_auroc",
+        "threshold": 0.5
+      },
+      "epoch": 5,
+      "validation": {
+        "n": 7500,
+        "balanced_accuracy": 0.9968333333333333,
+        "auroc": 0.999985,
+        "real_false_positive_rate": 0.005333333333333333,
+        "confusion_matrix_real_fake": [
+          [
+            1492,
+            8
+          ],
+          [
+            6,
+            5994
+          ]
+        ]
+      },
+      "original_checkpoint_sha256": "8d0400b12f22d3cc8d0b0a6097a53bf81c1355cfbc28c162bcdc42a75dbb7e7e"
+    },
+    "base_checkpoint": [
+      "facebook/dinov3-vitb16-pretrain-lvd1689m",
+      "5931719e67bbdb9737e363e781fb0c67687896bc"
+    ]
+  }
+}

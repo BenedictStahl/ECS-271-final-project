@@ -38,6 +38,6 @@
     "class_weight": "balanced",
     "probability_threshold": 0.5
   },
-  "fine_tuning_configuration": "Pending teammate proposal",
+  "fine_tuning_configuration": "Completed 12-run grid: encoder LR {1e-5,3e-6} x last {2,4} blocks x three encoders. Locked selections in results/finetuning-grid-2026-11-27/selected_models.json; selected before full test evaluation.",
   "other_candidate_manifests": "Available for explicitly separate secondary experiments; primary holdout remains Qwen."
 }

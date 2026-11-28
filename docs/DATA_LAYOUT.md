@@ -102,3 +102,50 @@ metadata, manifest/review bindings, encoder/cache provenance, and saved validati
 outputs. All 96,000 current image hashes match the indexed full-decode evidence.
 The local audit report is `data/maintenance/2026-11-25/documentation_layout_audit.json`.
 No primary test predictions were computed during this check.
+
+## Fine-tuning smoke artifacts (27 November 2026)
+
+`data/runs/finetune-smoke-2026-11-27/{deit3,siglip2,dinov3}` contains each
+configuration, six-step history, smoke.pt trainable-delta checkpoint, validation
+predictions, verification.json and a separate checkpoint-loading verification.
+`data/runs/finetune-smoke-2026-11-27/summary.json` summarizes readiness. These
+are diagnostics, not scientific training results; do not use them to initialize
+the full runs. The original frozen-head runs and feature caches are unchanged.
+Logs are data/finetune-MODEL-smoke-2026-11-27.log.
+
+## Validation JPEG diagnostic artifacts
+
+`data/runs/jpeg75-validation-control-2026-11-27/{deit3,siglip2,dinov3}` contains
+plan.json (fixed settings and hashes written before inference), paired_predictions.jsonl
+and results.json. The parent folder has summary.json and REPORT.txt. These are
+validation-only diagnostic outputs, not training data or primary test results.
+The training-only header audits are in data/maintenance/2026-11-27/; no source
+JPEGs or caches were rewritten.
+
+## Initial full fine-tuning runs
+
+Completed: data/runs/finetune-initial-2026-11-27-r2. Top level has immutable
+recipe.json/protocol.json, source_snapshot/, environment_and_sources.json,
+run_status.json, per-model logs and runtime_estimate.json. Model directories
+have configuration.json, progress.json, per-epoch history/checkpoints and any
+AMP recovery events. All three model directories are present and complete.
+The unsuffixed finetune-initial-2026-11-27 folder is the interrupted first attempt;
+its status explains recovery. Its partial weights are not used by r2.
+
+## Completed grid and portable evaluation assets
+
+`data/runs/finetuning-grid-2026-11-27/grid_status.json` records all twelve
+successful runs. A runs remain in the initial r2 root; B-DeiT is under
+`data/runs/finetune-last2-lr3e-6-2026-11-27`; the other eight model runs are
+inside the grid root. Every run retains full best/last training checkpoints.
+
+`results/finetuning-grid-2026-11-27/` contains compact Git-tracked validation
+histories and selected-model records. `data/evaluation-handoff/` holds portable
+inference deltas, frozen heads and the test index. The test images are delivered
+in a separate archive, extracting to its images/test/ directory. No local copy
+of those extracted test images is required on the original machine to build it.
+
+Transfer archives live outside the repository in
+`../ECS271_evaluation_handoff_2026-11-27/`. See EVALUATION_HANDOFF.md. The evaluator
+uses only portable package paths and checks image/model hashes. The original
+machine's absolute dataset roots in historical run artifacts are not required.

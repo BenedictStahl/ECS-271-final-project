@@ -1,0 +1,16 @@
+{
+  "name": "initial_last2_lr1e-5",
+  "unfrozen_blocks": 2,
+  "encoder_lr": 0.00001,
+  "head_lr": 0.0001,
+  "weight_decay": 0.01,
+  "batch_size": 32,
+  "epochs": 5,
+  "patience": 2,
+  "warmup_fraction": 0.05,
+  "gradient_clip": 1.0,
+  "seed": 42,
+  "augmentation_views": 1,
+  "selection_metric": "seen_validation_auroc",
+  "threshold": 0.5
+}

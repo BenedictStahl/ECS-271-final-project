@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "archived_test_images_hash_verified": 45000,
+  "asset_hashes_verified": true,
+  "validation_checks": [
+    {
+      "model": "deit3",
+      "validation_images": 5,
+      "max_probability_error": 0.0,
+      "isolated_delivered_base_load": true
+    },
+    {
+      "model": "siglip2",
+      "validation_images": 5,
+      "max_probability_error": 0.0,
+      "isolated_delivered_base_load": true
+    },
+    {
+      "model": "dinov3",
+      "validation_images": 5,
+      "max_probability_error": 0.0,
+      "isolated_delivered_base_load": true
+    }
+  ],
+  "test_inference_performed": false
+}

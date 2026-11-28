@@ -124,3 +124,107 @@ For a crop's final patch tokens, patch score = weight dot patch. The mean of the
 separate. Heatmaps cover the processed crop; tokens incorporate image-wide context,
 so scores are not causal pixel explanations. Keep the same pooling/head for the
 first fine-tuning comparison to isolate adaptation effects.
+
+
+## Approved initial fine-tuning recipe (27 November 2026)
+
+Configuration: finetuning_initial.json. Unfreeze the last two transformer blocks,
+final normalization, and the existing raw-feature linear head. Encoder/head LRs
+are 1e-5/1e-4; AdamW decay is 0.01 on multidimensional weights and zero on
+biases/one-dimensional parameters (including normalization and layer scales).
+Batch 32; up to five epochs; two epochs without seen-validation AUROC improvement
+stops training. Warmup is ceil(5% of the planned optimizer steps), then cosine
+decay. Clip global gradient norm to 1. FP16 encoder autocast with gradient scaling;
+head/loss stay FP32. Seed 42. These settings are initial choices, not tuned optima.
+
+All frozen prefix/embedding modules remain in eval mode. Only the chosen final
+blocks, final norm and head enter training mode. Frozen parameters receive no
+gradients. Each of the 35,000 approved parents has an original and the same fixed
+view 1 used by the frozen baseline: 70,000 views/epoch. Loss gives each view
+weight 0.5 and normalizes by the sum of parent weights, with class weights
+N/(2*n_class) from original training counts (real=2.5, fake=0.625). No sampler
+rebalancing is added. Validation uses 7,500 original images; Qwen/test are never
+opened or scored by this trainer. Index/review/manifest and baseline head hashes
+are checked. Each image is hash-checked as it is loaded.
+
+Smoke and full-training actions are explicit and require NEW output folders:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\finetune.py smoke --model deit3 --device cuda:0 --output data\runs\finetune-smoke-NEW\deit3
+.\.venv\Scripts\python.exe scripts\finetune.py smoke --model dinov3 --device cuda:1 --local-dino ..\dino_inspection_2026-11-25\dinov3-base --output data\runs\finetune-smoke-NEW\dinov3
+# Full-run examples. Current runs use run_initial_finetunes.py with snapshot inputs.
+.\.venv\Scripts\python.exe scripts\finetune.py train --model deit3 --device cuda:0 --output data\runs\finetune-initial-NEW\deit3
+.\.venv\Scripts\python.exe scripts\finetune.py train --model siglip2 --device cuda:1 --output data\runs\finetune-initial-NEW\siglip2
+# Start DINO once a GPU is free.
+.\.venv\Scripts\python.exe scripts\finetune.py train --model dinov3 --device cuda:0 --local-dino ..\dino_inspection_2026-11-25\dinov3-base --output data\runs\finetune-initial-NEW\dinov3
+```
+
+Defaults: two Windows-safe DataLoader workers, four main-process CPU threads,
+o network downloads (offline checkpoint loading). --workers 0 can help debug
+worker issues. --config selects a separately named recipe for future approved
+experiments. --protocol and --baseline-root allow explicit transferred inputs.
+There is no CLI resume. Do not overwrite or train from smoke diagnostics.
+
+Completed smoke tests selected 32 training references across five included
+sources (160 parents, 320 available views), shuffled and processed six batches
+of 32, and evaluated eight matched validation references (40 images). The smoke
+warmup/cosine schedule is compressed into six steps to exercise the schedule;
+its trajectory is not the first six steps of a scientific five-epoch run.
+Initial validation predictions matched the frozen baselines within 8e-7;
+frozen parameter hashes stayed unchanged; both selected blocks, final norm and
+head changed; gradients/loss stayed finite; reload into fresh bases reproduced
+predictions; and XAI patch-score identities passed. Timing extrapolates only
+four updates after two warmups and can be optimistic because of prefetch/cache
+and short validation samples. Allocated tensor peaks around 1 GiB do not include
+all reserved/driver/desktop memory. Measure the first full epoch for scheduling.
+
+Full runs save configuration.json, history.json, best.pt and last.pt. Best is
+selected strictly by seen-validation AUROC; best validation predictions and
+linear_head.npz are saved when best improves. Best/last checkpoints contain only
+trainable parameter deltas (plus optimizer/scheduler/scaler state and metadata),
+not duplicate frozen encoder weights. Use the exact original base to reconstruct.
+The standalone head must be paired with the corresponding fine-tuned encoder;
+it is not interchangeable with the original frozen encoder.
+
+For inference/XAI from a fine-tuned checkpoint:
+
+```python
+import torch
+from finetune import load_finetuned  # add scripts/ to your import path
+model = load_finetuned("path/to/best.pt", torch.device("cuda:0"),
+                       local_dino="path/to/dinov3-base")  # DINO only; omit for other encoders
+model.eval()
+# Use train_probe.image_transform(model.name), then model(image_batch) inside
+# inference_mode + CUDA FP16 autocast as in finetune.evaluate.
+# For patch maps use model.encoder and model.head with the existing patch_scores.
+```
+
+load_finetuned validates checkpoint format, selected base revision, parameter
+names and shapes. It needs the original checkpoint cache/local DINO folder but
+does not need the old baseline head or full feature caches for inference.
+
+## Active run launcher and live timing
+
+run_initial_finetunes.py starts DeiT on GPU0 and SigLIP on GPU1, then automatically
+queues DINO on the first free GPU. It snapshots the recipe/protocol and records
+commands, PIDs and exit status. The completed initial output is
+data/runs/finetune-initial-2026-11-27-r2; see INITIAL_FINETUNING_RUN_2026-11-27.md.
+finetune.py writes progress.json every 100 successful updates with recent
+throughput and a five-epoch remaining-time estimate, and per-epoch timing in history.json.
+
+FP16 gradient overflow is recoverable: GradScaler skips that update, reduces
+loss scale and the same batch is retried (up to eight attempts). No batch is
+dropped, and the scheduler advances only after success. Missing gradients,
+nonfinite loss, nonfinite gradients without AMP, or repeated failed recovery
+still stop explicitly. Retry events are written to amp_overflow_retries.json.
+The first full-run attempt exposed an overly strict fatal-gradient guard; its
+logs were retained and both first jobs were restarted cleanly after this correction.
+
+## Completed grid and test handoff
+
+All 12 grid runs are complete. See FINETUNING_GRID_2026-11-27.md for the
+configuration matrix and results/finetuning-grid-2026-11-27 for all epoch histories
+and locked selections. The original live run launcher descriptions above describe
+execution, not currently running jobs. EVALUATION_HANDOFF.md explains portable
+verification and explicit test evaluation. Fine-tuned inference files exclude
+optimizer state; original best.pt/last.pt training artifacts remain local.

@@ -1,4 +1,4 @@
-# Project status — 25 November 2026
+# Project status — 27 November 2026
 
 ## Completed
 
@@ -42,22 +42,35 @@ primary full-dataset runs have not been computed. Earlier two-generator pilots
 and the tiny pipeline smoke tests did evaluate their test subsets; their outputs
 are historical/debugging evidence, not the primary full-dataset results.
 
-All 33 unit tests pass. Saved-head reload, predictions, train-only weighted scaler
+The frozen-baseline stage passed 33 unit tests. Saved-head reload, predictions, train-only weighted scaler
 statistics, folded head equivalence, and generator/view exclusions were verified.
 
-## Next work
+## Fine-tuning readiness and next work
 
-1. Josh supplies the fine-tuning configuration; agree on layers, learning rates,
-   optimizer, epochs, early stopping and checkpoint selection using seen validation.
-2. Implement a simple image-based trainer using the same Qwen holdout, pooling,
-   linear head, and baseline augmentation first. Initialize from the exact original
-   encoder and the compatible trained head. Changing encoder weights invalidates
-   frozen feature caches for that fine-tuned model.
-3. Run a short memory/speed/checkpoint check, then run two independent models on
-   the two RTX 3090s. Keep the frozen and fine-tuned checkpoints for Ben.
-4. Freeze the training/evaluation configuration before primary test evaluation.
+The group approved the initial configuration in finetuning_initial.json. A simple
+image-based trainer is implemented in scripts/finetune.py. Real-checkpoint smoke
+runs passed on both RTX 3090s for all three encoders: six updates at batch 32,
+with 160 selected training parents (320 possible original/augmented views),
+192 views actually processed, and 40 unaugmented validation images each.
+Frozen weights were unchanged; selected blocks/norm/head updated with finite
+gradients. Fresh-base/delta reloads reproduced predictions, and patch-score
+math passed. Per-source augmented pixels matched the existing baseline caches.
+42 unit tests pass, including the validation-only JPEG diagnostic. No primary test images were read or scored.
+
+1. Start the three full initial-config runs, two concurrently on separate GPUs,
+   then the third. Each starts from the original encoder and frozen baseline head,
+   not from smoke-test weights. Full initial-config runs are active; see the execution record below.
+2. Compare seen-generator validation and available time; optional next experiments
+   are encoder LR 3e-6, then four unfrozen blocks. Weight decay stays fixed.
+3. Freeze configurations before primary test evaluation and XAI comparison.
    Report held-out Qwen versus real separately from seen-generator results;
-   prefer family-aware uncertainty estimates because reviewed test variants correlate.
+   prefer family-aware uncertainty because reviewed test variants correlate.
+
+Smoke checkpoints are trainable deltas plus optimizer/scheduler/scaler state;
+they require the exact original pretrained encoder. No CLI resume is implemented.
+The saved protocol now points to the approved fine-tuning configuration. Earlier
+frozen runs bind the prior protocol file hash as historical provenance; their
+manifest/index bindings and trained artifacts are unchanged.
 
 Ben can already use each encoder's linear_head.npz for XAI. Recompute final patch
 tokens on selected images; mean(score grid) + bias equals the image logit.
@@ -79,3 +92,30 @@ Sudarsan can prepare evaluation/report infrastructure without opening primary te
 The primary holdout was explicitly selected by Cameron after protocol analysis,
 not from the full baseline test scores. Other holdout manifests remain available;
 no full five-holdout benchmark has been run.
+
+## JPEG validation check completed
+
+One fixed quality-75 re-encoding condition was compared with fresh original
+inference on the exact 7,500 seen-generator validation images. No Qwen/test
+images were opened, no model was fitted and threshold stayed at 0.5. BA changes
+were -3.88/-0.69/-2.26 percentage points for DeiT/SigLIP/DINO respectively;
+real FPR stayed essentially unchanged. This supports reporting compression
+sensitivity, especially for DeiT. It does not isolate shortcut reliance from
+destruction of genuine forensic cues or erase historical compression. The
+approved initial recipe and all existing artifacts remain unchanged. Preserve
+this condition as a secondary comparison for fine-tuned checkpoints. See
+JPEG_VALIDATION_CONTROL_2026-11-27.md for protocol, intervals and implications.
+
+## Full fine-tuning grid completed
+
+All 12 runs completed successfully: two encoder learning rates (1e-5, 3e-6),
+two unfreezing depths (2, 4), and three encoders. Each ran five epochs; no run
+failed. The initial failed AMP attempt is historical and excluded from the grid.
+All three selected four final blocks and encoder LR 1e-5 using seen-validation
+AUROC. Selected epochs: DeiT 5, SigLIP 3, DINO 5. Primary full test evaluation
+has not been run. See FINETUNING_GRID_2026-11-27.md and EVALUATION_HANDOFF.md.
+
+Git contains code, recipes and compact validation results under results/.
+Model weights and 45,000 test images are supplied in separate private archives.
+The frozen baseline encoder weights remain unchanged; fine-tuned models require
+both the original encoder and the selected trained delta.
